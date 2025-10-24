@@ -1,5 +1,89 @@
 const CONFIG={API_URL:'https://eon.zk524.com',REFRESH_INTERVAL:10000};
-const STATE={currentPage:'wallet',wallet:null,refreshTimer:null};
+const STATE={currentPage:'wallet',currentWalletId:null,wallets:{},refreshTimer:null};
+function loadWallets(){
+const stored=localStorage.getItem('eon_wallets');
+const currentId=localStorage.getItem('eon_current_wallet');
+if(stored){
+STATE.wallets=JSON.parse(stored);
+STATE.currentWalletId=currentId;
+}
+}
+function saveWallets(){
+localStorage.setItem('eon_wallets',JSON.stringify(STATE.wallets));
+if(STATE.currentWalletId){
+localStorage.setItem('eon_current_wallet',STATE.currentWalletId);
+}
+}
+function getCurrentWallet(){
+return STATE.currentWalletId?STATE.wallets[STATE.currentWalletId]:null;
+}
+function setCurrentWallet(id){
+STATE.currentWalletId=id;
+localStorage.setItem('eon_current_wallet',id);
+updateWalletSwitcher();
+if(STATE.currentPage==='wallet'){
+loadWallet();
+}
+}
+function addWallet(wallet,name){
+const id=wallet.address;
+STATE.wallets[id]={wallet,name:name||`Wallet ${Object.keys(STATE.wallets).length+1}`};
+saveWallets();
+setCurrentWallet(id);
+}
+function removeWallet(id){
+delete STATE.wallets[id];
+if(STATE.currentWalletId===id){
+const ids=Object.keys(STATE.wallets);
+STATE.currentWalletId=ids.length>0?ids[0]:null;
+}
+saveWallets();
+updateWalletSwitcher();
+}
+function renameWallet(id,newName){
+if(STATE.wallets[id]){
+STATE.wallets[id].name=newName;
+saveWallets();
+updateWalletSwitcher();
+}
+}
+function updateWalletSwitcher(){
+const currentWalletName=document.getElementById('currentWalletName');
+const walletList=document.getElementById('walletList');
+if(!currentWalletName)return;
+const current=getCurrentWallet();
+currentWalletName.textContent=current?current.name:'No Wallet';
+if(!walletList)return;
+const ids=Object.keys(STATE.wallets);
+if(ids.length===0){
+walletList.innerHTML='<div class="wallet-list-empty">No wallets</div>';
+return;
+}
+walletList.innerHTML=ids.map(id=>{
+const w=STATE.wallets[id];
+const active=id===STATE.currentWalletId;
+return `<div class="wallet-list-item ${active?'active':''}" data-id="${id}">
+<div class="wallet-list-info">
+<div class="wallet-list-name">${w.name}</div>
+<div class="wallet-list-address">${formatHash(w.wallet.address,12)}</div>
+</div>
+${active?'<span class="wallet-list-badge">●</span>':''}
+</div>`;
+}).join('');
+walletList.querySelectorAll('.wallet-list-item').forEach(item=>{
+item.addEventListener('click',()=>{
+setCurrentWallet(item.dataset.id);
+hideWalletDropdown();
+});
+});
+}
+function showWalletDropdown(){
+document.getElementById('walletDropdown').style.display='block';
+updateWalletSwitcher();
+}
+function hideWalletDropdown(){
+document.getElementById('walletDropdown').style.display='none';
+}
 async function callRPC(method,params=null){
 try{
 const response=await fetch(CONFIG.API_URL,{
@@ -66,29 +150,26 @@ break;
 }
 updateLastRefresh();
 }
-function loadWallet(){
-STATE.wallet=JSON.parse(localStorage.getItem('eon_wallet')||'null');
-}
 async function loadWallet(){
-STATE.wallet=JSON.parse(localStorage.getItem('eon_wallet')||'null');
+const wallet=getCurrentWallet();
 const totalBalance=document.getElementById('totalBalance');
 const walletAddress=document.getElementById('walletAddress');
 const utxoList=document.getElementById('utxoList');
-if(!STATE.wallet){
+if(!wallet){
 totalBalance.textContent='0';
 walletAddress.textContent='No wallet loaded';
-utxoList.innerHTML='<div class="info">Create or import a wallet in Settings</div>';
+utxoList.innerHTML='<div class="info">Create or import a wallet</div>';
 return;
 }
-walletAddress.textContent=STATE.wallet.address;
+walletAddress.textContent=wallet.wallet.address;
 document.getElementById('copyAddressBtn').addEventListener('click',()=>{
-navigator.clipboard.writeText(STATE.wallet.address);
+navigator.clipboard.writeText(wallet.wallet.address);
 showNotification('Address copied!');
 });
 try{
-const balance=await callRPC('get_balance_by_owner',{owner:STATE.wallet.address});
+const balance=await callRPC('get_balance_by_owner',{owner:wallet.wallet.address});
 totalBalance.textContent=balance||'0';
-const utxos=await callRPC('get_list_of_utxo_by_owner_order_by_amount',{owner:STATE.wallet.address,limit:10});
+const utxos=await callRPC('get_list_of_utxo_by_owner_order_by_amount',{owner:wallet.wallet.address,limit:10});
 if(Array.isArray(utxos)&&utxos.length>0){
 utxoList.innerHTML=utxos.map((u,i)=>`
 <div class="utxo-item">
@@ -123,7 +204,8 @@ const sendBtn=document.getElementById('sendBtn');
 const sendResult=document.getElementById('sendResult');
 sendBtn.addEventListener('click',async()=>{
 sendResult.innerHTML='';
-if(!STATE.wallet){
+const wallet=getCurrentWallet();
+if(!wallet){
 sendResult.innerHTML='<div class="error">No wallet loaded</div>';
 return;
 }
@@ -134,9 +216,24 @@ if(!toAddress||!amount){
 sendResult.innerHTML='<div class="error">Please fill all required fields</div>';
 return;
 }
+const secret=prompt('Enter your wallet secret:');
+if(!secret){
+sendResult.innerHTML='<div class="error">Secret required to sign transaction</div>';
+return;
+}
+sendResult.innerHTML='<div class="loading">Verifying wallet...</div>';
+try{
+const valid=await WasmWallet.verifyWallet(wallet.wallet,secret);
+if(!valid){
+throw new Error('Invalid secret');
+}
+}catch(error){
+sendResult.innerHTML=`<div class="error">Verification failed: ${error.message}</div>`;
+return;
+}
 sendResult.innerHTML='<div class="loading">Creating transaction...</div>';
 try{
-const utxos=await callRPC('get_list_of_utxo_by_owner_order_by_amount',{owner:STATE.wallet.address,limit:2});
+const utxos=await callRPC('get_list_of_utxo_by_owner_order_by_amount',{owner:wallet.wallet.address,limit:2});
 if(!Array.isArray(utxos)||utxos.length===0){
 throw new Error('No UTXOs available');
 }
@@ -153,7 +250,7 @@ tx={
 ix:utxo.id,
 iy:'0x0000000000000000000000000000000000000000000000000000000000000000',
 ox:encodeOut(amount,toAddress,[]),
-oy:encodeOut((outAmount-amountBig-feeBig).toString(),STATE.wallet.address,[])
+oy:encodeOut((outAmount-amountBig-feeBig).toString(),wallet.wallet.address,[])
 };
 }else{
 const utxo0=utxos[0];
@@ -168,11 +265,14 @@ tx={
 ix:utxo0.id,
 iy:utxo1.id,
 ox:encodeOut(amount,toAddress,[]),
-oy:encodeOut((total-amountBig-feeBig).toString(),STATE.wallet.address,[])
+oy:encodeOut((total-amountBig-feeBig).toString(),wallet.wallet.address,[])
 };
 }
-const proof=await generateProof(tx);
-const wptx=encodeWpTx(STATE.wallet,proof,tx);
+sendResult.innerHTML='<div class="loading">Signing transaction (may take a moment)...</div>';
+const wptx=await WasmWallet.signTransaction(wallet.wallet,secret,tx);
+console.log('[DEBUG] Generated wptx length:',wptx.length);
+console.log('[DEBUG] wptx:',wptx.substring(0,200)+'...');
+sendResult.innerHTML='<div class="loading">Submitting transaction...</div>';
 await callRPC('submit_transaction',{tx:wptx});
 sendResult.innerHTML='<div class="success">Transaction submitted successfully!</div>';
 setTimeout(()=>{
@@ -186,92 +286,119 @@ sendResult.innerHTML=`<div class="error">Transaction failed: ${error.message}</d
 function encodeOut(amount,owner,data){
 const amountHex=BigInt(amount).toString(16).padStart(64,'0');
 const ownerHex=owner.replace('0x','').padStart(64,'0');
-const dataLen=(data.length).toString(16).padStart(8,'0');
+const dataLenNum=data.length;
+const dataLenHex=((dataLenNum>>>24)&0xFF).toString(16).padStart(2,'0')+
+((dataLenNum>>>16)&0xFF).toString(16).padStart(2,'0')+
+((dataLenNum>>>8)&0xFF).toString(16).padStart(2,'0')+
+(dataLenNum&0xFF).toString(16).padStart(2,'0');
 const dataHex=data.map(d=>d.padStart(64,'0')).join('');
-return '0x'+amountHex+ownerHex+dataLen+dataHex;
-}
-async function generateProof(tx){
-const salt=STATE.wallet.salt.replace('0x','');
-const hash=STATE.wallet.hash.replace('0x','');
-const txHash=await hashTx(tx);
-return '0x'+salt+hash+txHash.replace('0x','')+'00'.repeat(768);
-}
-async function hashTx(tx){
-const data=tx.ix+tx.iy+tx.ox+tx.oy;
-const msgUint8=new TextEncoder().encode(data);
-const hashBuffer=await crypto.subtle.digest('SHA-256',msgUint8);
-const hashArray=Array.from(new Uint8Array(hashBuffer));
-return '0x'+hashArray.map(b=>b.toString(16).padStart(2,'0')).join('').substring(0,64);
-}
-function encodeWpTx(wallet,proof,tx){
-const vk='0x'+'00'.repeat(96);
-const txHex=tx.ix.replace('0x','')+tx.iy.replace('0x','')+tx.ox.replace('0x','')+tx.oy.replace('0x','');
-return '0x'+vk.replace('0x','')+proof.replace('0x','')+txHex;
+return '0x'+amountHex+ownerHex+dataLenHex+dataHex;
 }
 function loadReceive(){
+const wallet=getCurrentWallet();
 const receiveAddress=document.getElementById('receiveAddress');
 const qrCode=document.getElementById('qrCode');
-if(!STATE.wallet){
+if(!wallet){
 receiveAddress.textContent='No wallet loaded';
 qrCode.innerHTML='<span class="qr-icon">⬡</span>';
 return;
 }
-receiveAddress.textContent=STATE.wallet.address;
-qrCode.innerHTML=`<div class="qr-text">${STATE.wallet.address}</div>`;
+receiveAddress.textContent=wallet.wallet.address;
+qrCode.innerHTML=`<div class="qr-text">${wallet.wallet.address}</div>`;
 document.getElementById('copyReceiveBtn').addEventListener('click',()=>{
-navigator.clipboard.writeText(STATE.wallet.address);
+navigator.clipboard.writeText(wallet.wallet.address);
 showNotification('Address copied!');
 });
 }
 function setupSettings(){
-document.getElementById('createWalletBtn').addEventListener('click',createWallet);
-document.getElementById('importWalletBtn').addEventListener('click',importWallet);
-document.getElementById('exportWalletBtn').addEventListener('click',exportWallet);
-document.getElementById('clearWalletBtn').addEventListener('click',clearWallet);
+renderWalletManagement();
 document.getElementById('changeEndpointBtn').addEventListener('click',changeEndpoint);
 }
-function createWallet(){
-const salt=generateRandomHex(64);
+function renderWalletManagement(){
+const container=document.getElementById('walletManagementList');
+const ids=Object.keys(STATE.wallets);
+if(ids.length===0){
+container.innerHTML='<div class="info">No wallets. Create or import one.</div><div class="setting-item"><div class="setting-actions"><button id="createWalletBtnSettings" class="btn btn-primary btn-small">Create New</button><button id="importWalletBtnSettings" class="btn btn-secondary btn-small">Import</button></div></div>';
+document.getElementById('createWalletBtnSettings').addEventListener('click',createWallet);
+document.getElementById('importWalletBtnSettings').addEventListener('click',importWallet);
+return;
+}
+container.innerHTML=ids.map(id=>{
+const w=STATE.wallets[id];
+return `<div class="setting-item">
+<div class="setting-info">
+<div class="setting-label">${w.name}</div>
+<div class="setting-desc">${formatHash(w.wallet.address,20)}</div>
+</div>
+<div class="setting-actions">
+<button class="btn btn-secondary btn-small wallet-rename" data-id="${id}">Rename</button>
+<button class="btn btn-secondary btn-small wallet-export" data-id="${id}">Export</button>
+<button class="btn btn-danger btn-small wallet-delete" data-id="${id}">Delete</button>
+</div>
+</div>`;
+}).join('')+`<div class="setting-item"><div class="setting-actions"><button id="createWalletBtnSettings" class="btn btn-primary btn-small">Create New</button><button id="importWalletBtnSettings" class="btn btn-secondary btn-small">Import</button></div></div>`;
+container.querySelectorAll('.wallet-rename').forEach(btn=>{
+btn.addEventListener('click',()=>{
+const id=btn.dataset.id;
+const newName=prompt('Enter new wallet name:',STATE.wallets[id].name);
+if(newName){
+renameWallet(id,newName);
+renderWalletManagement();
+}
+});
+});
+container.querySelectorAll('.wallet-export').forEach(btn=>{
+btn.addEventListener('click',()=>{
+const id=btn.dataset.id;
+exportWalletById(id);
+});
+});
+container.querySelectorAll('.wallet-delete').forEach(btn=>{
+btn.addEventListener('click',()=>{
+const id=btn.dataset.id;
+if(confirm(`Delete wallet "${STATE.wallets[id].name}"? Make sure you have exported it first!`)){
+removeWallet(id);
+renderWalletManagement();
+}
+});
+});
+document.getElementById('createWalletBtnSettings').addEventListener('click',createWallet);
+document.getElementById('importWalletBtnSettings').addEventListener('click',importWallet);
+}
+async function createWallet(){
+const name=prompt('Enter wallet name:');
+if(!name)return;
 const secret=prompt('Enter a secret passphrase:');
 if(!secret)return;
-const hash=hashSecret(secret,salt);
-const address='0x'+hashSecret(salt+hash,'').substring(0,40);
-const wallet={address:address,salt:'0x'+salt,hash:'0x'+hash,version:1};
-localStorage.setItem('eon_wallet',JSON.stringify(wallet));
-STATE.wallet=wallet;
+const confirm=prompt('Confirm your secret passphrase:');
+if(secret!==confirm){
+showNotification('Passphrases do not match!');
+return;
+}
+showNotification('Creating wallet...');
+try{
+const wallet=await WasmWallet.createWallet(secret);
+addWallet(wallet,name);
 showNotification('Wallet created successfully!');
 navigate('wallet');
+}catch(error){
+showNotification('Failed to create wallet: '+error.message);
 }
-function hashSecret(secret,salt){
-let hash=0;
-const input=secret+salt;
-for(let i=0;i<input.length;i++){
-const char=input.charCodeAt(i);
-hash=((hash<<5)-hash)+char;
-hash=hash&hash;
-}
-return Math.abs(hash).toString(16).padStart(64,'0');
-}
-function generateRandomHex(length){
-const bytes=new Uint8Array(length/2);
-crypto.getRandomValues(bytes);
-return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
 }
 function importWallet(){
 const input=document.createElement('input');
 input.type='file';
 input.accept='.json';
-input.onchange=e=>{
+input.onchange=async e=>{
 const file=e.target.files[0];
 const reader=new FileReader();
-reader.onload=event=>{
+reader.onload=async event=>{
 try{
-const wallet=JSON.parse(event.target.result);
-if(!wallet.address||!wallet.salt||!wallet.hash){
-throw new Error('Invalid wallet file');
-}
-localStorage.setItem('eon_wallet',JSON.stringify(wallet));
-STATE.wallet=wallet;
+const walletData=JSON.parse(event.target.result);
+await WasmWallet.importWallet(walletData);
+const name=prompt('Enter wallet name:',`Wallet ${Object.keys(STATE.wallets).length+1}`);
+if(!name)return;
+addWallet(walletData,name);
 showNotification('Wallet imported successfully!');
 navigate('wallet');
 }catch(error){
@@ -282,32 +409,24 @@ reader.readAsText(file);
 };
 input.click();
 }
-function exportWallet(){
-if(!STATE.wallet){
-showNotification('No wallet to export');
-return;
-}
-const dataStr=JSON.stringify(STATE.wallet,null,2);
+function exportWalletById(id){
+const w=STATE.wallets[id];
+if(!w)return;
+const dataStr=JSON.stringify(w.wallet,null,2);
 const dataBlob=new Blob([dataStr],{type:'application/json'});
 const url=URL.createObjectURL(dataBlob);
 const link=document.createElement('a');
 link.href=url;
-link.download='eon_wallet.json';
+link.download=`${w.name.replace(/[^a-z0-9]/gi,'_')}.json`;
 link.click();
 showNotification('Wallet exported!');
-}
-function clearWallet(){
-if(!confirm('Are you sure you want to clear your wallet? Make sure you have exported it first!'))return;
-localStorage.removeItem('eon_wallet');
-STATE.wallet=null;
-showNotification('Wallet cleared');
-navigate('wallet');
 }
 function changeEndpoint(){
 const newEndpoint=prompt('Enter new API endpoint:',CONFIG.API_URL);
 if(newEndpoint){
 CONFIG.API_URL=newEndpoint;
-showNotification('Endpoint updated to: '+newEndpoint);
+document.getElementById('currentEndpoint').textContent=newEndpoint;
+showNotification('Endpoint updated');
 }
 }
 function formatHash(hash,length=16){
@@ -327,6 +446,28 @@ setTimeout(()=>notif.remove(),300);
 },3000);
 }
 document.addEventListener('DOMContentLoaded',()=>{
+loadWallets();
+updateWalletSwitcher();
+document.getElementById('walletSwitcherBtn').addEventListener('click',e=>{
+e.stopPropagation();
+const dropdown=document.getElementById('walletDropdown');
+if(dropdown.style.display==='none'){
+showWalletDropdown();
+}else{
+hideWalletDropdown();
+}
+});
+document.getElementById('addWalletBtn').addEventListener('click',()=>{
+hideWalletDropdown();
+const choice=prompt('Create new wallet or import existing?\\n1: Create\\n2: Import');
+if(choice==='1')createWallet();
+else if(choice==='2')importWallet();
+});
+document.addEventListener('click',e=>{
+if(!e.target.closest('.wallet-switcher')){
+hideWalletDropdown();
+}
+});
 document.querySelectorAll('.nav-link').forEach(link=>{
 link.addEventListener('click',e=>{
 e.preventDefault();
