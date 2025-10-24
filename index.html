@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EON Wallet</title>
+<link rel="stylesheet" href="index.css">
+</head>
+<body>
+<div class="container">
+<header class="header">
+<div class="logo">
+<span class="logo-icon">⬡</span>
+<h1>EON <span class="accent">WALLET</span></h1>
+</div>
+<div class="network-status">
+<span class="status-indicator" id="statusIndicator"></span>
+<span class="status-text">DEVNET</span>
+</div>
+</header>
+<nav class="nav">
+<a href="#wallet" class="nav-link active" data-page="wallet">
+<span class="nav-icon">⬢</span>
+<span>Wallet</span>
+</a>
+<a href="#send" class="nav-link" data-page="send">
+<span class="nav-icon">◈</span>
+<span>Send</span>
+</a>
+<a href="#receive" class="nav-link" data-page="receive">
+<span class="nav-icon">⬡</span>
+<span>Receive</span>
+</a>
+<a href="#settings" class="nav-link" data-page="settings">
+<span class="nav-icon">⚙</span>
+<span>Settings</span>
+</a>
+</nav>
+<main id="content" class="content"></main>
+<footer class="footer">
+<div class="footer-info">
+<span>API: <span id="apiStatus">Connected</span></span>
+<span class="separator">|</span>
+<span>Block: <span id="blockHeight">--</span></span>
+<span class="separator">|</span>
+<span>Updated: <span id="lastUpdate">--</span></span>
+</div>
+</footer>
+</div>
+<div id="templates" style="display: none;">
+<template id="walletTemplate">
+<div class="page-header">
+<h2>My Wallet</h2>
+<button id="refreshBtn" class="btn btn-small btn-secondary">
+<span class="btn-icon">⟳</span>
+Refresh
+</button>
+</div>
+<div class="wallet-card">
+<div class="balance-section">
+<div class="balance-label">Total Balance</div>
+<div class="balance-value" id="totalBalance">0</div>
+<div class="balance-fiat" id="balanceFiat">≈ $0.00</div>
+</div>
+<div class="address-section">
+<div class="address-label">Address</div>
+<div class="address-value">
+<span id="walletAddress">--</span>
+<button id="copyAddressBtn" class="btn-icon-only" title="Copy">⧉</button>
+</div>
+</div>
+</div>
+<div class="section">
+<h3>UTXOs</h3>
+<div id="utxoList"></div>
+</div>
+</template>
+<template id="sendTemplate">
+<div class="page-header">
+<h2>Send Transaction</h2>
+</div>
+<div class="form-card">
+<div class="form-group">
+<label>To Address</label>
+<input type="text" id="toAddress" class="form-input" placeholder="0x...">
+</div>
+<div class="form-group">
+<label>Amount</label>
+<input type="text" id="sendAmount" class="form-input" placeholder="0">
+</div>
+<div class="form-group">
+<label>Fee</label>
+<input type="text" id="sendFee" class="form-input" placeholder="0">
+<div class="form-hint">Network fee for transaction processing</div>
+</div>
+<div class="form-actions">
+<button id="sendBtn" class="btn btn-primary">
+<span class="btn-icon">→</span>
+Send Transaction
+</button>
+</div>
+<div id="sendResult"></div>
+</div>
+</template>
+<template id="receiveTemplate">
+<div class="page-header">
+<h2>Receive</h2>
+</div>
+<div class="receive-card">
+<div class="qr-section">
+<div class="qr-placeholder" id="qrCode">
+<span class="qr-icon">⬡</span>
+</div>
+</div>
+<div class="address-section">
+<div class="address-label">Your Address</div>
+<div class="address-box">
+<div class="address-text" id="receiveAddress">--</div>
+<button id="copyReceiveBtn" class="btn btn-secondary">
+<span class="btn-icon">⧉</span>
+Copy Address
+</button>
+</div>
+</div>
+</div>
+</template>
+<template id="settingsTemplate">
+<div class="page-header">
+<h2>Settings</h2>
+</div>
+<div class="settings-section">
+<h3>Wallet</h3>
+<div class="setting-item">
+<div class="setting-info">
+<div class="setting-label">Wallet File</div>
+<div class="setting-desc">Import or create wallet</div>
+</div>
+<div class="setting-actions">
+<button id="createWalletBtn" class="btn btn-primary btn-small">Create New</button>
+<button id="importWalletBtn" class="btn btn-secondary btn-small">Import</button>
+</div>
+</div>
+<div class="setting-item">
+<div class="setting-info">
+<div class="setting-label">Export Wallet</div>
+<div class="setting-desc">Download wallet configuration</div>
+</div>
+<div class="setting-actions">
+<button id="exportWalletBtn" class="btn btn-secondary btn-small">Export</button>
+</div>
+</div>
+</div>
+<div class="settings-section">
+<h3>Network</h3>
+<div class="setting-item">
+<div class="setting-info">
+<div class="setting-label">API Endpoint</div>
+<div class="setting-desc" id="currentEndpoint">https://eon.zk524.com</div>
+</div>
+<div class="setting-actions">
+<button id="changeEndpointBtn" class="btn btn-secondary btn-small">Change</button>
+</div>
+</div>
+</div>
+<div class="settings-section">
+<h3>Security</h3>
+<div class="setting-item">
+<div class="setting-info">
+<div class="setting-label">Clear Wallet</div>
+<div class="setting-desc">Remove wallet from browser</div>
+</div>
+<div class="setting-actions">
+<button id="clearWalletBtn" class="btn btn-danger btn-small">Clear</button>
+</div>
+</div>
+</div>
+</template>
+</div>
+<script src="index.js"></script>
+</body>
+</html>
