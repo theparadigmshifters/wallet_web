@@ -365,7 +365,7 @@ class GoWasmLoader {
                 
                 // Load wasm_exec.js
                 const script = document.createElement('script');
-                script.src = 'wasm_exec.js';
+                script.src = './wasm/go/wasm_exec.js';
                 script.onload = async () => {
                     try {
                         // Load SRS files first
@@ -383,7 +383,7 @@ class GoWasmLoader {
                         });
                         
                         const result = await WebAssembly.instantiateStreaming(
-                            fetch('eon_wallet_go.wasm'),
+                            fetch('./wasm/go/eon_wallet_go.wasm'),
                             go.importObject
                         );
                         

@@ -12,7 +12,7 @@ const WasmWallet = {
             console.log('Initializing wallet WASM modules...');
             
             // Initialize Rust WASM (in main thread now)
-            const wasmModule = await import('./wasm-pkg/eon_wallet_wasm.js');
+            const wasmModule = await import('./wasm/rust/eon_wallet_wasm.js');
             await wasmModule.default();
             this.rustWasm = wasmModule;
             console.log('✓ Rust WASM ready');

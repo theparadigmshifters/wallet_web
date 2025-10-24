@@ -4,7 +4,7 @@ let wasmInstance = null;
 async function initWasm() {
     if (wasmModule) return;
     
-    const response = await fetch('./wasm-pkg/eon_wallet_wasm_bg.wasm');
+    const response = await fetch('./wasm/rust/eon_wallet_wasm_bg.wasm');
     const wasmBytes = await response.arrayBuffer();
     
     const imports = {
