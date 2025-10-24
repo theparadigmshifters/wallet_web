@@ -1,0 +1,15 @@
+{
+  "name": "eon-wallet-wasm",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "eon_wallet_wasm_bg.wasm",
+    "eon_wallet_wasm.js",
+    "eon_wallet_wasm.d.ts"
+  ],
+  "main": "eon_wallet_wasm.js",
+  "types": "eon_wallet_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
