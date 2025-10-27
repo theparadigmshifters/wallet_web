@@ -37,7 +37,7 @@ async function updateSRSStatus() {
         } else {
             const missing = [];
             if (!status.ck) missing.push('SRS.CK.BIN');
-            if (!status.lk) missing.push('SRS.LK.BIN');
+            if (!status.lk) missing.push('SRS.LK.9.BIN');
             
             statusEl.innerHTML = `<span style="color: var(--warning)">⚠ Missing: ${missing.join(', ')}</span>`;
             if (clearBtn) clearBtn.style.display = 'none';
@@ -112,7 +112,7 @@ function uploadSRSFiles() {
                     console.log(`Uploaded ${fileName}: ${window.SRSManager.formatSize(file.size)}`);
                     uploadedCount++;
                 } else {
-                    console.warn(`Skipped ${file.name} - only SRS.CK.BIN and SRS.LK.BIN are accepted`);
+                    console.warn(`Skipped ${file.name} - only SRS.CK.BIN and SRS.LK.9.BIN are accepted`);
                 }
             }
             
@@ -121,7 +121,7 @@ function uploadSRSFiles() {
             if (uploadedCount > 0) {
                 showNotification(`${uploadedCount} SRS file(s) uploaded successfully!`);
             } else {
-                showNotification('No valid SRS files found. Please upload SRS.CK.BIN and SRS.LK.BIN');
+                showNotification('No valid SRS files found. Please upload SRS.CK.BIN and SRS.LK.9.BIN');
             }
         } catch (error) {
             console.error('SRS upload error:', error);
@@ -139,7 +139,7 @@ async function clearSRSFiles() {
     
     try {
         await window.SRSManager.deleteSRSFile('srs.ck.bin');
-        await window.SRSManager.deleteSRSFile('srs.lk.bin');
+        await window.SRSManager.deleteSRSFile('srs.lk.9.bin');
         await updateSRSStatus();
         showNotification('SRS files cleared');
     } catch (error) {

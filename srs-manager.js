@@ -5,11 +5,11 @@ class SRSManager {
         this.storeName = 'srsFiles';
         this.db = null;
         // Expected SRS file names (case-insensitive)
-        this.expectedFiles = ['srs.ck.bin', 'srs.lk.bin'];
+        this.expectedFiles = ['srs.ck.bin', 'srs.lk.9.bin'];
         // Remote SRS file paths
         this.remoteFiles = {
             'srs.ck.bin': 'srs/SRS.CK.BIN',
-            'srs.lk.bin': 'srs/SRS.LK.BIN'
+            'srs.lk.bin': 'srs/SRS.LK.9.BIN'
         };
     }
 
@@ -114,7 +114,7 @@ class SRSManager {
 
     async checkAllSRSFiles() {
         const ck = await this.hasSRSFile('srs.ck.bin');
-        const lk = await this.hasSRSFile('srs.lk.bin');
+        const lk = await this.hasSRSFile('srs.lk.9.bin');
         return { ck, lk, all: ck && lk };
     }
 

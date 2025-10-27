@@ -274,10 +274,10 @@ class GoWasmLoader {
         
         try {
             const ckFile = await window.SRSManager.getSRSFile('srs.ck.bin');
-            const lkFile = await window.SRSManager.getSRSFile('srs.lk.bin');
+            const lkFile = await window.SRSManager.getSRSFile('srs.lk.9.bin');
             
             if (!ckFile || !lkFile) {
-                throw new Error('SRS files not found. Please upload SRS.CK.BIN and SRS.LK.BIN in Settings.');
+                throw new Error('SRS files not found. Please upload SRS.CK.BIN and SRS.LK.9.BIN in Settings.');
             }
             
             // Pre-create directory structure
@@ -313,7 +313,7 @@ class GoWasmLoader {
             
             // Store SRS files
             const ckPath = '/tmp/.cache/eonark/SRS.CK.BIN';
-            const lkPath = '/tmp/.cache/eonark/SRS.LK.BIN';
+            const lkPath = '/tmp/.cache/eonark/SRS.LK.9.BIN';
             
             this.mockFS.set(ckPath, {
                 type: 'file',
@@ -340,7 +340,7 @@ class GoWasmLoader {
             });
             
             console.log(`[SRS] ✓ Loaded SRS.CK.BIN (${window.SRSManager.formatSize(ckFile.size)})`);
-            console.log(`[SRS] ✓ Loaded SRS.LK.BIN (${window.SRSManager.formatSize(lkFile.size)})`);
+            console.log(`[SRS] ✓ Loaded SRS.LK.9.BIN (${window.SRSManager.formatSize(lkFile.size)})`);
             
             return true;
         } catch (error) {
@@ -359,7 +359,7 @@ class GoWasmLoader {
                 // Check if SRS files are available
                 const srsStatus = await window.SRSManager.checkAllSRSFiles();
                 if (!srsStatus.all) {
-                    reject(new Error('SRS files not uploaded. Please go to Settings and upload SRS.CK.BIN and SRS.LK.BIN'));
+                    reject(new Error('SRS files not uploaded. Please go to Settings and upload SRS.CK.BIN and SRS.LK.9.BIN'));
                     return;
                 }
                 
