@@ -40,10 +40,6 @@
 <span class="nav-icon">◈</span>
 <span>Send</span>
 </a>
-<a href="#receive" class="nav-link" data-page="receive">
-<span class="nav-icon">⬡</span>
-<span>Receive</span>
-</a>
 <a href="#settings" class="nav-link" data-page="settings">
 <span class="nav-icon">⚙</span>
 <span>Settings</span>
@@ -115,28 +111,6 @@ Send Transaction
 <div id="sendResult"></div>
 </div>
 </template>
-<template id="receiveTemplate">
-<div class="page-header">
-<h2>Receive</h2>
-</div>
-<div class="receive-card">
-<div class="qr-section">
-<div class="qr-placeholder" id="qrCode">
-<span class="qr-icon">⬡</span>
-</div>
-</div>
-<div class="address-section">
-<div class="address-label">Your Address</div>
-<div class="address-box">
-<div class="address-text" id="receiveAddress">--</div>
-<button id="copyReceiveBtn" class="btn btn-secondary">
-<span class="btn-icon">⧉</span>
-Copy Address
-</button>
-</div>
-</div>
-</div>
-</template>
 <template id="settingsTemplate">
 <div class="page-header">
 <h2>Settings</h2>
@@ -153,13 +127,13 @@ Copy Address
 <div class="setting-desc" id="srsStatus">Checking...</div>
 </div>
 <div class="setting-actions">
-<button id="uploadSRSBtn" class="btn btn-primary btn-small">Upload SRS Files</button>
+<button id="uploadSRSBtn" class="btn btn-secondary btn-small">Upload Custom SRS</button>
 <button id="clearSRSBtn" class="btn btn-danger btn-small" style="display:none;">Clear SRS</button>
 </div>
 </div>
 <div id="srsFileList" class="setting-desc" style="margin-top: 10px;"></div>
 <div class="form-hint" style="margin-top: 10px;">
-Required files: <strong>SRS.CK.BIN</strong> and <strong>SRS.LK.9.BIN</strong> (found in ~/.cache/eon/ after running eoncli)
+Required files: <strong>SRS.CK.BIN</strong> and <strong>SRS.LK.BIN</strong>. Files will be auto-downloaded on first load.
 </div>
 </div>
 <div class="settings-section">

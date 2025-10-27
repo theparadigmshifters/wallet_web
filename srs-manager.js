@@ -5,7 +5,12 @@ class SRSManager {
         this.storeName = 'srsFiles';
         this.db = null;
         // Expected SRS file names (case-insensitive)
-        this.expectedFiles = ['srs.ck.bin', 'srs.lk.9.bin'];
+        this.expectedFiles = ['srs.ck.bin', 'srs.lk.bin'];
+        // Remote SRS file paths
+        this.remoteFiles = {
+            'srs.ck.bin': 'srs/SRS.CK.BIN',
+            'srs.lk.bin': 'srs/SRS.LK.BIN'
+        };
     }
 
     async init() {
@@ -54,6 +59,41 @@ class SRSManager {
         });
     }
 
+    async saveSRSFileFromArrayBuffer(name, arrayBuffer) {
+        await this.init();
+        
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction([this.storeName], 'readwrite');
+            const store = transaction.objectStore(this.storeName);
+            
+            const data = {
+                name: name.toLowerCase(),
+                content: arrayBuffer,
+                size: arrayBuffer.byteLength,
+                uploadedAt: new Date().toISOString()
+            };
+            
+            const request = store.put(data);
+            request.onsuccess = () => resolve(data);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async downloadAndSaveSRSFile(name) {
+        const remotePath = this.remoteFiles[name.toLowerCase()];
+        if (!remotePath) {
+            throw new Error(`Unknown SRS file: ${name}`);
+        }
+
+        const response = await fetch(remotePath);
+        if (!response.ok) {
+            throw new Error(`Failed to download ${name}: ${response.statusText}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        return await this.saveSRSFileFromArrayBuffer(name, arrayBuffer);
+    }
+
     async getSRSFile(name) {
         await this.init();
         
@@ -74,8 +114,21 @@ class SRSManager {
 
     async checkAllSRSFiles() {
         const ck = await this.hasSRSFile('srs.ck.bin');
-        const lk = await this.hasSRSFile('srs.lk.9.bin');
+        const lk = await this.hasSRSFile('srs.lk.bin');
         return { ck, lk, all: ck && lk };
+    }
+
+    async downloadAllSRSFiles() {
+        const results = [];
+        for (const fileName of this.expectedFiles) {
+            try {
+                const data = await this.downloadAndSaveSRSFile(fileName);
+                results.push({ fileName, success: true, data });
+            } catch (error) {
+                results.push({ fileName, success: false, error: error.message });
+            }
+        }
+        return results;
     }
 
     async deleteSRSFile(name) {

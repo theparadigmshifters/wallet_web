@@ -141,9 +141,6 @@ break;
 case 'send':
 setupSend();
 break;
-case 'receive':
-loadReceive();
-break;
 case 'settings':
 setupSettings();
 break;
@@ -293,22 +290,6 @@ const dataLenHex=((dataLenNum>>>24)&0xFF).toString(16).padStart(2,'0')+
 (dataLenNum&0xFF).toString(16).padStart(2,'0');
 const dataHex=data.map(d=>d.padStart(64,'0')).join('');
 return '0x'+amountHex+ownerHex+dataLenHex+dataHex;
-}
-function loadReceive(){
-const wallet=getCurrentWallet();
-const receiveAddress=document.getElementById('receiveAddress');
-const qrCode=document.getElementById('qrCode');
-if(!wallet){
-receiveAddress.textContent='No wallet loaded';
-qrCode.innerHTML='<span class="qr-icon">⬡</span>';
-return;
-}
-receiveAddress.textContent=wallet.wallet.address;
-qrCode.innerHTML=`<div class="qr-text">${wallet.wallet.address}</div>`;
-document.getElementById('copyReceiveBtn').addEventListener('click',()=>{
-navigator.clipboard.writeText(wallet.wallet.address);
-showNotification('Address copied!');
-});
 }
 function setupSettings(){
 renderWalletManagement();
