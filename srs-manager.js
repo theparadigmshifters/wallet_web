@@ -9,7 +9,7 @@ class SRSManager {
         // Remote SRS file paths
         this.remoteFiles = {
             'srs.ck.bin': 'srs/SRS.CK.BIN',
-            'srs.lk.bin': 'srs/SRS.LK.9.BIN'
+            'srs.lk.9.bin': 'srs/SRS.LK.9.BIN'
         };
     }
 
