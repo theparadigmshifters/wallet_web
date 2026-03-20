@@ -62,9 +62,11 @@ return;
 walletList.innerHTML=ids.map(id=>{
 const w=STATE.wallets[id];
 const active=id===STATE.currentWalletId;
+const accountType=w.wallet.account_type||'zk';
+const typeLabel=accountType==='normal'?'[N]':'[ZK]';
 return `<div class="wallet-list-item ${active?'active':''}" data-id="${id}">
 <div class="wallet-list-info">
-<div class="wallet-list-name">${w.name}</div>
+<div class="wallet-list-name">${w.name} <span style="opacity:0.6;font-size:0.85em;">${typeLabel}</span></div>
 <div class="wallet-list-address">${formatHash(w.wallet.address,12)}</div>
 </div>
 ${active?'<span class="wallet-list-badge">●</span>':''}
@@ -92,13 +94,15 @@ headers:{'Content-Type':'application/json'},
 body:JSON.stringify({jsonrpc:'2.0',id:Date.now(),method:method,params:params})
 });
 const data=await response.json();
-if(data.error)throw new Error(data.error.message||'RPC Error');
+if(data.error)throw new Error(data.error.message||JSON.stringify(data.error)||'RPC Error');
 updateConnectionStatus(true);
 return data.result;
 }catch(error){
 updateConnectionStatus(false);
-console.error('RPC call failed:',error);
-throw error;
+const msg=error instanceof TypeError?`Network error: ${error.message} (check CORS or API endpoint ${CONFIG.API_URL})`:
+(typeof error==='string'?error:(error.message||JSON.stringify(error)));
+console.error('RPC call failed:',msg,error);
+throw new Error(msg);
 }
 }
 function updateConnectionStatus(isConnected){
@@ -159,6 +163,14 @@ utxoList.innerHTML='<div class="info">Create or import a wallet</div>';
 return;
 }
 walletAddress.textContent=wallet.wallet.address;
+try{
+const bech32=await WasmWallet.addressToBech32(wallet.wallet.address);
+document.getElementById('walletBech32').textContent=bech32;
+document.getElementById('copyBech32Btn').addEventListener('click',()=>{
+navigator.clipboard.writeText(bech32);
+showNotification('Bech32 address copied!');
+});
+}catch(e){document.getElementById('walletBech32').textContent='--';}
 document.getElementById('copyAddressBtn').addEventListener('click',()=>{
 navigator.clipboard.writeText(wallet.wallet.address);
 showNotification('Address copied!');
@@ -166,6 +178,9 @@ showNotification('Address copied!');
 try{
 const balance=await callRPC('get_balance_by_owner',{owner:wallet.wallet.address});
 totalBalance.textContent=balance||'0';
+const EON_PRICE=13.37;
+const fiatValue=(Number(balance)||0)*EON_PRICE;
+document.getElementById('balanceFiat').textContent=`≈ $${fiatValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 const utxos=await callRPC('get_list_of_utxo_by_owner_order_by_amount',{owner:wallet.wallet.address,limit:10});
 if(Array.isArray(utxos)&&utxos.length>0){
 utxoList.innerHTML=utxos.map((u,i)=>`
@@ -189,9 +204,7 @@ if(STATE.currentPage==='wallet')loadWallet();
 }
 function parseOutAmount(outHex){
 try{
-const hex=outHex.replace('0x','');
-const amountHex=hex.substring(0,64);
-return BigInt('0x'+amountHex).toString();
+return WasmWallet.rustWasm.parse_out_amount(outHex);
 }catch{
 return '0';
 }
@@ -225,72 +238,39 @@ if(!valid){
 throw new Error('Invalid secret');
 }
 }catch(error){
-sendResult.innerHTML=`<div class="error">Verification failed: ${error.message}</div>`;
+const msg=typeof error==='string'?error:(error.message||JSON.stringify(error));
+sendResult.innerHTML=`<div class="error">Verification failed: ${msg}</div>`;
 return;
 }
-sendResult.innerHTML='<div class="loading">Creating transaction...</div>';
+sendResult.innerHTML='<div class="loading">Fetching UTXOs...</div>';
 try{
+console.log('[TX] Fetching UTXOs for',wallet.wallet.address);
 const utxos=await callRPC('get_list_of_utxo_by_owner_order_by_amount',{owner:wallet.wallet.address,limit:2});
+console.log('[TX] UTXOs:',JSON.stringify(utxos));
 if(!Array.isArray(utxos)||utxos.length===0){
 throw new Error('No UTXOs available');
 }
-let tx;
-const amountBig=BigInt(amount);
-const feeBig=BigInt(fee);
-if(utxos.length===1){
-const utxo=utxos[0];
-const outAmount=BigInt(parseOutAmount(utxo.out));
-if(outAmount<amountBig+feeBig){
-throw new Error('Insufficient balance');
-}
-tx={
-ix:utxo.id,
-iy:'0x0000000000000000000000000000000000000000000000000000000000000000',
-ox:encodeOut(amount,toAddress,[]),
-oy:encodeOut((outAmount-amountBig-feeBig).toString(),wallet.wallet.address,[])
-};
-}else{
-const utxo0=utxos[0];
-const utxo1=utxos[1];
-const amount0=BigInt(parseOutAmount(utxo0.out));
-const amount1=BigInt(parseOutAmount(utxo1.out));
-const total=amount0+amount1;
-if(total<amountBig+feeBig){
-throw new Error('Insufficient balance');
-}
-tx={
-ix:utxo0.id,
-iy:utxo1.id,
-ox:encodeOut(amount,toAddress,[]),
-oy:encodeOut((total-amountBig-feeBig).toString(),wallet.wallet.address,[])
-};
-}
-sendResult.innerHTML='<div class="loading">Signing transaction (may take a moment)...</div>';
-const wptx=await WasmWallet.signTransaction(wallet.wallet,secret,tx);
-console.log('[DEBUG] Generated wptx length:',wptx.length);
-console.log('[DEBUG] wptx:',wptx.substring(0,200)+'...');
+sendResult.innerHTML='<div class="loading">Building and signing transaction...</div>';
+console.log('[TX] Building tx: to=',toAddress,'amount=',amount,'fee=',fee);
+console.log('[TX] Wallet:',JSON.stringify(wallet.wallet));
+const wptx=await WasmWallet.buildAndSignTransaction(wallet.wallet,secret,utxos,toAddress,amount,fee);
+console.log('[TX] Generated wptx length:',wptx.length);
+console.log('[TX] wptx prefix:',wptx.substring(0,100));
 sendResult.innerHTML='<div class="loading">Submitting transaction...</div>';
-await callRPC('submit_transaction',{tx:wptx});
+const submitResult=await callRPC('submit_transaction',{tx:wptx});
+console.log('[TX] Submit result:',submitResult);
 sendResult.innerHTML='<div class="success">Transaction submitted successfully!</div>';
 setTimeout(()=>{
 navigate('wallet');
 },2000);
 }catch(error){
-sendResult.innerHTML=`<div class="error">Transaction failed: ${error.message}</div>`;
+console.error('[TX] Error:',error);
+const msg=typeof error==='string'?error:(error.message||JSON.stringify(error));
+sendResult.innerHTML=`<div class="error">Transaction failed: ${msg}</div>`;
 }
 });
 }
-function encodeOut(amount,owner,data){
-const amountHex=BigInt(amount).toString(16).padStart(64,'0');
-const ownerHex=owner.replace('0x','').padStart(64,'0');
-const dataLenNum=data.length;
-const dataLenHex=((dataLenNum>>>24)&0xFF).toString(16).padStart(2,'0')+
-((dataLenNum>>>16)&0xFF).toString(16).padStart(2,'0')+
-((dataLenNum>>>8)&0xFF).toString(16).padStart(2,'0')+
-(dataLenNum&0xFF).toString(16).padStart(2,'0');
-const dataHex=data.map(d=>d.padStart(64,'0')).join('');
-return '0x'+amountHex+ownerHex+dataLenHex+dataHex;
-}
+
 function setupSettings(){
 renderWalletManagement();
 document.getElementById('changeEndpointBtn').addEventListener('click',changeEndpoint);
@@ -300,16 +280,18 @@ const container=document.getElementById('walletManagementList');
 const ids=Object.keys(STATE.wallets);
 if(ids.length===0){
 container.innerHTML='<div class="info">No wallets. Create or import one.</div><div class="setting-item"><div class="setting-actions"><button id="createWalletBtnSettings" class="btn btn-primary btn-small">Create New</button><button id="importWalletBtnSettings" class="btn btn-secondary btn-small">Import</button></div></div>';
-document.getElementById('createWalletBtnSettings').addEventListener('click',createWallet);
+document.getElementById('createWalletBtnSettings').addEventListener('click',showAddWalletModal);
 document.getElementById('importWalletBtnSettings').addEventListener('click',importWallet);
 return;
 }
 container.innerHTML=ids.map(id=>{
-const w=STATE.wallets[id];
+const wallet=STATE.wallets[id];
+const accountType=wallet.wallet.account_type||'zk';
+const typeLabel=accountType==='normal'?'Normal':'ZK';
 return `<div class="setting-item">
 <div class="setting-info">
-<div class="setting-label">${w.name}</div>
-<div class="setting-desc">${formatHash(w.wallet.address,20)}</div>
+<div class="setting-label">${wallet.name} <span style="font-size:0.8em;color:#666;">[${typeLabel}]</span></div>
+<div class="setting-desc">${formatHash(wallet.wallet.address,20)}</div>
 </div>
 <div class="setting-actions">
 <button class="btn btn-secondary btn-small wallet-rename" data-id="${id}">Rename</button>
@@ -343,12 +325,35 @@ renderWalletManagement();
 }
 });
 });
-document.getElementById('createWalletBtnSettings').addEventListener('click',createWallet);
+document.getElementById('createWalletBtnSettings').addEventListener('click',showAddWalletModal);
 document.getElementById('importWalletBtnSettings').addEventListener('click',importWallet);
 }
-async function createWallet(){
+function showAddWalletModal(){
+const overlay=document.createElement('div');
+overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;';
+const modal=document.createElement('div');
+modal.style.cssText='background:var(--card-bg,#1a1a2e);border:1px solid var(--border,#333);border-radius:12px;padding:24px;min-width:320px;text-align:center;';
+modal.innerHTML=`
+<h3 style="margin:0 0 20px;color:var(--text,#fff);">Add Wallet</h3>
+<div style="display:flex;flex-direction:column;gap:12px;">
+<button id="modalCreateNormal" style="padding:12px;border-radius:8px;border:1px solid var(--border,#333);background:var(--primary,#00d4aa);color:#000;font-weight:600;cursor:pointer;font-size:14px;">Create Normal Account</button>
+<button id="modalCreateZk" style="padding:12px;border-radius:8px;border:1px solid var(--border,#333);background:var(--primary,#00d4aa);color:#000;font-weight:600;cursor:pointer;font-size:14px;">Create ZK Account</button>
+<button id="modalImport" style="padding:12px;border-radius:8px;border:1px solid var(--border,#333);background:transparent;color:var(--text,#fff);cursor:pointer;font-size:14px;">Import Wallet</button>
+<button id="modalCancel" style="padding:10px;border-radius:8px;border:none;background:transparent;color:var(--text-secondary,#888);cursor:pointer;font-size:13px;">Cancel</button>
+</div>`;
+overlay.appendChild(modal);
+document.body.appendChild(overlay);
+const close=()=>document.body.removeChild(overlay);
+overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
+modal.querySelector('#modalCreateNormal').addEventListener('click',()=>{close();createWallet('normal');});
+modal.querySelector('#modalCreateZk').addEventListener('click',()=>{close();createWallet('zk');});
+modal.querySelector('#modalImport').addEventListener('click',()=>{close();importWallet();});
+modal.querySelector('#modalCancel').addEventListener('click',close);
+}
+async function createWallet(type){
 const name=prompt('Enter wallet name:');
 if(!name)return;
+
 const secret=prompt('Enter a secret passphrase:');
 if(!secret)return;
 const confirm=prompt('Confirm your secret passphrase:');
@@ -358,7 +363,9 @@ return;
 }
 showNotification('Creating wallet...');
 try{
-const wallet=await WasmWallet.createWallet(secret);
+const wallet=type==='normal'?
+await WasmWallet.createWallet(secret):
+await WasmWallet.createZkWallet(secret);
 addWallet(wallet,name);
 showNotification('Wallet created successfully!');
 navigate('wallet');
@@ -440,9 +447,7 @@ hideWalletDropdown();
 });
 document.getElementById('addWalletBtn').addEventListener('click',()=>{
 hideWalletDropdown();
-const choice=prompt('Create new wallet or import existing?\\n1: Create\\n2: Import');
-if(choice==='1')createWallet();
-else if(choice==='2')importWallet();
+showAddWalletModal();
 });
 document.addEventListener('click',e=>{
 if(!e.target.closest('.wallet-switcher')){

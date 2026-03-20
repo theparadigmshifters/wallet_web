@@ -169,8 +169,24 @@ font-size:8px;
 color:var(--accent-primary);
 }
 .wallet-dropdown-actions{
-padding:8px;
+padding:8px 12px 12px;
 border-top:1px solid var(--border-color);
+}
+.wallet-dropdown-actions .btn{
+width:100%;
+padding:10px;
+font-size:12px;
+border-radius:6px;
+border:1px dashed var(--border-hover);
+background:transparent;
+color:var(--accent-primary);
+cursor:pointer;
+transition:var(--transition);
+letter-spacing:0.5px;
+}
+.wallet-dropdown-actions .btn:hover{
+background:var(--accent-subtle);
+border-style:solid;
 }
 .network-status{
 display:flex;
