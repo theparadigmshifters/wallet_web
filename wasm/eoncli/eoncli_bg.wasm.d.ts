@@ -5,6 +5,7 @@ export const create_normal_account: (a: number, b: number) => [number, number, n
 export const create_zk_account: (a: number, b: number) => [number, number, number, number];
 export const get_account_address: (a: number, b: number) => [number, number, number, number];
 export const address_to_bech32: (a: number, b: number) => [number, number, number, number];
+export const resolve_address: (a: number, b: number) => [number, number, number, number];
 export const parse_out_amount: (a: number, b: number) => [number, number, number, number];
 export const verify_account: (a: number, b: number, c: number, d: number) => [number, number, number];
 export const sign_transaction: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];

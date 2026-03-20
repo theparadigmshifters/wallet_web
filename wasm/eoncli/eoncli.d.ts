@@ -4,6 +4,7 @@ export function create_normal_account(_secret: string): string;
 export function create_zk_account(secret: string): string;
 export function get_account_address(account_json: string): string;
 export function address_to_bech32(address_hex: string): string;
+export function resolve_address(address: string): string;
 export function parse_out_amount(out_hex: string): string;
 export function verify_account(account_json: string, secret: string): boolean;
 export function sign_transaction(account_json: string, _secret: string, tx_json: string): string;
@@ -28,6 +29,7 @@ export interface InitOutput {
   readonly create_zk_account: (a: number, b: number) => [number, number, number, number];
   readonly get_account_address: (a: number, b: number) => [number, number, number, number];
   readonly address_to_bech32: (a: number, b: number) => [number, number, number, number];
+  readonly resolve_address: (a: number, b: number) => [number, number, number, number];
   readonly parse_out_amount: (a: number, b: number) => [number, number, number, number];
   readonly verify_account: (a: number, b: number, c: number, d: number) => [number, number, number];
   readonly sign_transaction: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];

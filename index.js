@@ -245,6 +245,15 @@ sendResult.innerHTML=`<div class="error">Verification failed: ${msg}</div>`;
 return;
 }
 }
+sendResult.innerHTML='<div class="loading">Resolving address...</div>';
+let resolvedAddress=toAddress;
+try{
+await WasmWallet.init();
+resolvedAddress=WasmWallet.rustWasm.resolve_address(toAddress);
+}catch(e){
+sendResult.innerHTML=`<div class="error">Invalid address: ${e}</div>`;
+return;
+}
 sendResult.innerHTML='<div class="loading">Fetching UTXOs...</div>';
 try{
 console.log('[TX] Fetching UTXOs for',wallet.wallet.address);
@@ -254,9 +263,9 @@ if(!Array.isArray(utxos)||utxos.length===0){
 throw new Error('No UTXOs available');
 }
 sendResult.innerHTML='<div class="loading">Building and signing transaction...</div>';
-console.log('[TX] Building tx: to=',toAddress,'amount=',amount,'fee=',fee);
+console.log('[TX] Building tx: to=',resolvedAddress,'amount=',amount,'fee=',fee);
 console.log('[TX] Wallet:',JSON.stringify(wallet.wallet));
-const wptx=await WasmWallet.buildAndSignTransaction(wallet.wallet,secret,utxos,toAddress,amount,fee);
+const wptx=await WasmWallet.buildAndSignTransaction(wallet.wallet,secret,utxos,resolvedAddress,amount,fee);
 console.log('[TX] Generated wptx length:',wptx.length);
 console.log('[TX] wptx prefix:',wptx.substring(0,100));
 sendResult.innerHTML='<div class="loading">Submitting transaction...</div>';
