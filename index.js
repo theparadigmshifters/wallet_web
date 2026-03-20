@@ -226,9 +226,11 @@ if(!toAddress||!amount){
 sendResult.innerHTML='<div class="error">Please fill all required fields</div>';
 return;
 }
-const secret=prompt('Enter your wallet secret:');
+let secret='';
+if(wallet.wallet.account_type==='zk'){
+secret=prompt('Enter your wallet secret:');
 if(!secret){
-sendResult.innerHTML='<div class="error">Secret required to sign transaction</div>';
+sendResult.innerHTML='<div class="error">Secret required to sign ZK transaction</div>';
 return;
 }
 sendResult.innerHTML='<div class="loading">Verifying wallet...</div>';
@@ -241,6 +243,7 @@ throw new Error('Invalid secret');
 const msg=typeof error==='string'?error:(error.message||JSON.stringify(error));
 sendResult.innerHTML=`<div class="error">Verification failed: ${msg}</div>`;
 return;
+}
 }
 sendResult.innerHTML='<div class="loading">Fetching UTXOs...</div>';
 try{
@@ -353,13 +356,15 @@ modal.querySelector('#modalCancel').addEventListener('click',close);
 async function createWallet(type){
 const name=prompt('Enter wallet name:');
 if(!name)return;
-
-const secret=prompt('Enter a secret passphrase:');
+let secret='';
+if(type==='zk'){
+secret=prompt('Enter a secret passphrase:');
 if(!secret)return;
 const confirm=prompt('Confirm your secret passphrase:');
 if(secret!==confirm){
 showNotification('Passphrases do not match!');
 return;
+}
 }
 showNotification('Creating wallet...');
 try{
