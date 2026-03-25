@@ -355,9 +355,11 @@ const data=await resp.json();
 if(data.success){
 result.innerHTML='<div class="success">'+data.message+'</div>';
 if(window.turnstile)turnstile.reset('#turnstileWidget');
+faucetBtn.disabled=true;faucetBtn.style.opacity='0.5';faucetBtn.style.cursor='not-allowed';
 }else{
 result.innerHTML='<div class="error">'+(data.message||'Request failed')+'</div>';
 if(window.turnstile)turnstile.reset('#turnstileWidget');
+faucetBtn.disabled=true;faucetBtn.style.opacity='0.5';faucetBtn.style.cursor='not-allowed';
 }
 }catch(e){
 result.innerHTML='<div class="error">Failed to connect to faucet: '+e.message+'</div>';
