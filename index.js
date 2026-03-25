@@ -1,4 +1,4 @@
-const CONFIG={API_URL:'https://eon.zk524.com',FAUCET_URL:'http://localhost:3000',TURNSTILE_SITE_KEY:'0x4AAAAAACvuWReT5CoqVcfm',REFRESH_INTERVAL:10000};
+const CONFIG={API_URL:'https://eon.zk524.com',FAUCET_URL:'https://eon.zk524.com',TURNSTILE_SITE_KEY:'0x4AAAAAACvuWReT5CoqVcfm',REFRESH_INTERVAL:10000};
 const STATE={currentPage:'wallet',currentWalletId:null,wallets:{},refreshTimer:null};
 function loadWallets(){
 const stored=localStorage.getItem('eon_wallets');
