@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EON Wallet</title>
-<link rel="stylesheet" href="index.css?v=2">
+<link rel="stylesheet" href="index.css?v=3">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
 <div class="container">
@@ -39,6 +40,10 @@
 <a href="#send" class="nav-link" data-page="send">
 <span class="nav-icon">◈</span>
 <span>Send</span>
+</a>
+<a href="#faucet" class="nav-link" data-page="faucet">
+<span class="nav-icon">💧</span>
+<span>Faucet</span>
 </a>
 <a href="#settings" class="nav-link" data-page="settings">
 <span class="nav-icon">⚙</span>
@@ -115,6 +120,37 @@ Send Transaction
 <div id="sendResult"></div>
 </div>
 </template>
+<template id="faucetTemplate">
+<div class="page-header">
+<h2>Faucet</h2>
+</div>
+<div class="faucet-card">
+<div class="faucet-info">
+<div class="faucet-title">Request Test Tokens</div>
+<div class="faucet-desc">Get free EON tokens for testing on devnet. Limited requests per address per day.</div>
+</div>
+<div class="faucet-stats" id="faucetStats">
+<div class="faucet-stat"><span class="faucet-stat-label">Amount per request</span><span class="faucet-stat-value" id="faucetAmount">--</span></div>
+<div class="faucet-stat"><span class="faucet-stat-label">Faucet balance</span><span class="faucet-stat-value" id="faucetBalance">--</span></div>
+</div>
+<div class="form-group">
+<label>Recipient Address</label>
+<input type="text" id="faucetAddress" class="form-input" placeholder="0x... or eon1...">
+<button id="faucetUseMyAddress" class="btn btn-secondary btn-small" style="margin-top:8px;">Use My Address</button>
+</div>
+<div class="form-group">
+<label>Verification</label>
+<div id="turnstileWidget" class="cf-turnstile" data-sitekey="" data-theme="dark"></div>
+</div>
+<div class="form-actions">
+<button id="faucetRequestBtn" class="btn btn-primary">
+<span class="btn-icon">💧</span>
+Request Tokens
+</button>
+</div>
+<div id="faucetResult"></div>
+</div>
+</template>
 <template id="settingsTemplate">
 <div class="page-header">
 <h2>Settings</h2>
@@ -138,7 +174,7 @@ Send Transaction
 </template>
 </div>
 <script src="wasm.js"></script>
-<script src="index.js"></script>
+<script src="index.js?v=3"></script>
 <script>
 // Override setupSettings to include SRS management
 const originalSetupSettings = window.setupSettings || function() {};

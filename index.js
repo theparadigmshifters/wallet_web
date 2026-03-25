@@ -1,4 +1,4 @@
-const CONFIG={API_URL:'https://eon.zk524.com',REFRESH_INTERVAL:10000};
+const CONFIG={API_URL:'https://eon.zk524.com',FAUCET_URL:'http://localhost:3000',TURNSTILE_SITE_KEY:'0x4AAAAAACvuWReT5CoqVcfm',REFRESH_INTERVAL:10000};
 const STATE={currentPage:'wallet',currentWalletId:null,wallets:{},refreshTimer:null};
 function loadWallets(){
 const stored=localStorage.getItem('eon_wallets');
@@ -145,6 +145,9 @@ break;
 case 'send':
 setupSend();
 break;
+case 'faucet':
+setupFaucet();
+break;
 case 'settings':
 setupSettings();
 break;
@@ -283,6 +286,84 @@ sendResult.innerHTML=`<div class="error">Transaction failed: ${msg}</div>`;
 });
 }
 
+function setupFaucet(){
+fetch(CONFIG.FAUCET_URL+'/faucet/info').then(r=>r.json()).then(info=>{
+document.getElementById('faucetAmount').textContent=info.amount_per_request+' EON';
+document.getElementById('faucetBalance').textContent=Number(info.balance).toLocaleString()+' EON';
+}).catch(()=>{
+document.getElementById('faucetAmount').textContent='--';
+document.getElementById('faucetBalance').textContent='--';
+});
+const widget=document.getElementById('turnstileWidget');
+var faucetBtn=document.getElementById('faucetRequestBtn');
+faucetBtn.disabled=true;
+faucetBtn.style.opacity='0.5';
+faucetBtn.style.cursor='not-allowed';
+if(widget&&CONFIG.TURNSTILE_SITE_KEY&&window.turnstile){
+turnstile.render('#turnstileWidget',{
+sitekey:CONFIG.TURNSTILE_SITE_KEY,
+theme:'dark',
+callback:function(){
+faucetBtn.disabled=false;
+faucetBtn.style.opacity='1';
+faucetBtn.style.cursor='pointer';
+},
+'expired-callback':function(){
+faucetBtn.disabled=true;
+faucetBtn.style.opacity='0.5';
+faucetBtn.style.cursor='not-allowed';
+},
+'error-callback':function(){
+faucetBtn.disabled=true;
+faucetBtn.style.opacity='0.5';
+faucetBtn.style.cursor='not-allowed';
+}
+});
+}
+document.getElementById('faucetUseMyAddress').addEventListener('click',()=>{
+const wallet=getCurrentWallet();
+if(wallet){
+document.getElementById('faucetAddress').value=wallet.wallet.address;
+}else{
+showNotification('No wallet loaded');
+}
+});
+document.getElementById('faucetRequestBtn').addEventListener('click',async()=>{
+const result=document.getElementById('faucetResult');
+const address=document.getElementById('faucetAddress').value.trim();
+if(!address){
+result.innerHTML='<div class="error">Please enter an address</div>';
+return;
+}
+let turnstileToken='';
+const turnstileInput=document.querySelector('[name="cf-turnstile-response"]');
+if(turnstileInput){
+turnstileToken=turnstileInput.value;
+}
+if(!turnstileToken){
+result.innerHTML='<div class="error">Please complete the verification first</div>';
+return;
+}
+result.innerHTML='<div class="loading">Requesting tokens...</div>';
+try{
+const resp=await fetch(CONFIG.FAUCET_URL+'/faucet',{
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({address:address,turnstile_token:turnstileToken})
+});
+const data=await resp.json();
+if(data.success){
+result.innerHTML='<div class="success">'+data.message+'</div>';
+if(window.turnstile)turnstile.reset('#turnstileWidget');
+}else{
+result.innerHTML='<div class="error">'+(data.message||'Request failed')+'</div>';
+if(window.turnstile)turnstile.reset('#turnstileWidget');
+}
+}catch(e){
+result.innerHTML='<div class="error">Failed to connect to faucet: '+e.message+'</div>';
+}
+});
+}
 function setupSettings(){
 renderWalletManagement();
 document.getElementById('changeEndpointBtn').addEventListener('click',changeEndpoint);
