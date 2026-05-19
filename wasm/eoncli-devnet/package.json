@@ -1,0 +1,15 @@
+{
+  "name": "eoncli",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "eoncli_bg.wasm",
+    "eoncli.js",
+    "eoncli.d.ts"
+  ],
+  "main": "eoncli.js",
+  "types": "eoncli.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

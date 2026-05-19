@@ -214,6 +214,22 @@ text-transform:uppercase;
 letter-spacing:1px;
 color:var(--text-secondary);
 }
+.network-select{
+font-size:12px;
+text-transform:uppercase;
+letter-spacing:1px;
+color:var(--text-secondary);
+background:transparent;
+border:none;
+outline:none;
+cursor:pointer;
+font-family:inherit;
+padding:0;
+}
+.network-select option{
+background:var(--bg-secondary);
+color:var(--text-primary);
+}
 .nav{
 display:flex;
 gap:8px;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EON Wallet</title>
+<title>EON Wallet (DEVNET)</title>
 <link rel="stylesheet" href="index.css?v=3">
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
@@ -30,8 +30,8 @@
 <div class="network-status">
 <span class="status-indicator" id="statusIndicator"></span>
 <select class="network-select" onchange="if(this.value)location.href=this.value">
-<option value="" selected>TESTNET</option>
-<option value="devnet.html">DEVNET</option>
+<option value="index.html">TESTNET</option>
+<option value="" selected>DEVNET</option>
 </select>
 </div>
 </header>
@@ -167,7 +167,7 @@ Request Tokens
 <div class="setting-item">
 <div class="setting-info">
 <div class="setting-label">API Endpoint</div>
-<div class="setting-desc" id="currentEndpoint">https://eon.zk524.com</div>
+<div class="setting-desc" id="currentEndpoint">https://eon.zk524.com/dev</div>
 </div>
 <div class="setting-actions">
 <button id="changeEndpointBtn" class="btn btn-secondary btn-small">Change</button>
@@ -176,8 +176,8 @@ Request Tokens
 </div>
 </template>
 </div>
-<script src="wasm.js"></script>
-<script src="index.js?v=3"></script>
+<script src="wasm-devnet.js"></script>
+<script src="devnet.js?v=1"></script>
 <script>
 // Override setupSettings to include SRS management
 const originalSetupSettings = window.setupSettings || function() {};
